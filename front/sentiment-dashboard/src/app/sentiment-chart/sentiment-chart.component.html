@@ -1,0 +1,42 @@
+<h1>Sentiment Analysis Chart</h1>
+<form [formGroup]="dateForm" (ngSubmit)="onSubmit()">
+  <div formArrayName="tickers">
+    <div *ngFor="let ticker of tickersList; let i = index">
+      <mat-form-field appearance="fill">
+        <mat-label>Ticker</mat-label>
+        <input matInput [value]="ticker" disabled>
+        <button mat-icon-button matSuffix (click)="removeTicker(i)" type="button">
+          <mat-icon>remove_circle</mat-icon>
+        </button>
+      </mat-form-field>
+    </div>
+  </div>
+  <mat-form-field appearance="fill">
+    <mat-label>Add Ticker</mat-label>
+    <input matInput formControlName="tickerInput">
+    <button mat-icon-button matSuffix (click)="addTicker()" type="button">
+      <mat-icon>add_circle</mat-icon>
+    </button>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Start Date</mat-label>
+    <input matInput [matDatepicker]="picker1" formControlName="startDate">
+    <mat-datepicker-toggle matSuffix [for]="picker1"></mat-datepicker-toggle>
+    <mat-datepicker #picker1></mat-datepicker>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>End Date</mat-label>
+    <input matInput [matDatepicker]="picker2" formControlName="endDate">
+    <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
+    <mat-datepicker #picker2></mat-datepicker>
+  </mat-form-field>
+  <mat-form-field appearance="fill">
+    <mat-label>Relevance Score</mat-label>
+    <input matInput type="number" formControlName="relevanceScore">
+  </mat-form-field>
+  <mat-checkbox formControlName="scaleByRelevance">Scale Sentiment by Relevance</mat-checkbox>
+  <mat-checkbox formControlName="scaleCircleByRelevance">Scale Circle Size by Relevance</mat-checkbox>
+  <mat-checkbox formControlName="plotLines">Plot Lines</mat-checkbox>
+  <button mat-raised-button color="primary" type="submit">Update Chart</button>
+</form>
+<canvas id="sentimentChart"></canvas>

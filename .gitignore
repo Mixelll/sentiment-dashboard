@@ -1,0 +1,26 @@
+# Node modules
+node_modules/
+npm-debug.log
+
+# Compiled output
+dist/
+tmp/
+out-tsc/
+coverage/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment files
+*.env
+
+# IDE and editor settings
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+back/credentials.py
