@@ -23,4 +23,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
-back/credentials.py
+
+# Misc
+__pycache__/
+*credentials*
+

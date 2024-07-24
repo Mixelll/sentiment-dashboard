@@ -172,7 +172,7 @@ export class SentimentChartComponent implements OnInit {
 
     const plotLines = this.dateForm.get('plotLines')?.value;
 
-    const datasets = Object.keys(this.fullData).map((ticker, index) => {
+    const datasets = Object.keys(this.fullData).map((ticker) => {
       const dataPoints = this.fullData[ticker];
       const dates: Point[] = dataPoints.map((d: SentimentData) => ({ x: new Date(d.time_published).getTime(), y: parseFloat(d.sentiment_score) }));
       const relevance = dataPoints.map((d: SentimentData) => parseFloat(d.relevance_score));
@@ -192,7 +192,8 @@ export class SentimentChartComponent implements OnInit {
         backgroundColor: color,
         pointRadius: scaleCircleByRelevance ? relevance.map(r => r * 10) : 5,
         pointBorderColor: 'black', // Outline color
-        pointBackgroundColor: color // Dot color
+        pointBackgroundColor: color, // Dot color
+        hidden: this.chart ? this.chart.getDatasetMeta(this.chart.data.datasets.findIndex(ds => ds.label === `${ticker} Sentiment Score`))?.hidden : false
       };
     });
 
