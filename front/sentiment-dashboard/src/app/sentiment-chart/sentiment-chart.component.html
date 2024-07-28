@@ -1,6 +1,5 @@
-<h1>Sentiment Analysis Chart</h1>
 <form [formGroup]="dateForm" (ngSubmit)="onSubmit()">
-  <div formArrayName="tickers">
+  <div formArrayName="tickers" class="ticker-list">
     <div *ngFor="let ticker of tickersList; let i = index">
       <mat-form-field appearance="fill">
         <mat-label>Ticker</mat-label>
@@ -37,6 +36,32 @@
   <mat-checkbox formControlName="scaleByRelevance">Scale Sentiment by Relevance</mat-checkbox>
   <mat-checkbox formControlName="scaleCircleByRelevance">Scale Circle Size by Relevance</mat-checkbox>
   <mat-checkbox formControlName="plotLines">Plot Lines</mat-checkbox>
+
+  <!-- Dropdown for source selection with tooltip -->
+  <mat-form-field appearance="fill" matTooltip="{{ getSelectedSourcesTooltip() }}">
+    <mat-label>Filter by Sources</mat-label>
+    <mat-select [formControl]="selectedSourcesControl" multiple>
+      <mat-option *ngFor="let source of sourcesList" [value]="source">
+        {{ source }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <!-- Dropdown for topic selection with tooltip -->
+  <mat-form-field appearance="fill" matTooltip="{{ getSelectedTopicsTooltip() }}">
+    <mat-label>Filter by Topics</mat-label>
+    <mat-select [formControl]="selectedTopicsControl" multiple>
+      <mat-option *ngFor="let topic of topicsList" [value]="topic">
+        {{ topic }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="fill">
+    <mat-label>Topic Relevance Score</mat-label>
+    <input matInput type="number" [formControl]="topicRelevanceScoreControl">
+  </mat-form-field>
+
   <button mat-raised-button color="primary" type="submit">Update Chart</button>
 </form>
 <canvas id="sentimentChart"></canvas>

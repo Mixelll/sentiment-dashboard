@@ -3,4 +3,10 @@
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+.ticker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px; /* Adjust the gap between tickers as needed */
+}
+
 

@@ -1,8 +1,80 @@
+import logging
 import psycopg
 from psycopg.rows import dict_row
-from credentials import postgres_db as postgres_credentials
+import os
+import requests
+import boto3
+from botocore.exceptions import ClientError
 
-conn_info = postgres_credentials.__dict__
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+# def get_region_from_metadata():
+#     try:
+#         response = requests.get('http://169.254.169.254/latest/meta-data/placement/region')
+#         response.raise_for_status()
+#         print(f"Region: {response.text}")
+#         return response.text
+#     except requests.RequestException as e:
+#         print(f"Error fetching region from metadata: {e}")
+#         return None
+#
+# print('REGION', get_region_from_metadata())
+
+def is_running_on_ec2():
+    """Check if the code is running on an EC2 instance."""
+    try:
+        response = requests.get('http://169.254.169.254/latest/meta-data/', timeout=1)
+        if response.status_code in [200, 401]:
+            return True
+        else:
+            return False
+    except requests.RequestException:
+        return False
+
+
+def fetch_db_credentials():
+    """Fetch database credentials from AWS Systems Manager Parameter Store."""
+    try:
+        ssm_client = boto3.client('ssm', region_name='il-central-1')
+        parameters = ssm_client.get_parameters(
+            Names=[
+                '/hybrid/config/db_host',
+                '/hybrid/config/db_port',
+                '/hybrid/config/db_user',
+                '/hybrid/config/db_password',
+                '/hybrid/config/db_name'
+            ],
+            WithDecryption=True
+        )
+        return {param['Name'].split('/')[-1]: param['Value'] for param in parameters['Parameters']}
+    except ClientError as e:
+        logger.error(f"Failed to fetch parameters: {e}")
+        return {}
+
+
+running_on_ec2 = is_running_on_ec2()
+
+
+if running_on_ec2:
+    # Use environment variables for the PostgreSQL credentials
+    fetched = fetch_db_credentials()
+    conn_info = {
+        'host': fetched.get('db_host'),
+        'port': fetched.get('db_port', 5432),
+        'user': fetched.get('db_user'),
+        'password': fetched.get('db_password'),
+        # 'dbname': fetched.get('db_name')
+    }
+else:
+    from credentials import postgres_db as postgres_credentials
+    conn_info = postgres_credentials.__dict__
+
+logger.info(f"Running on EC2: {running_on_ec2}")
+logger.debug(f"Database connection info: {conn_info}")
 
 
 def fetch_ticker_data(ticker, start_date, end_date, relevance_score=0.):
@@ -18,20 +90,22 @@ def fetch_ticker_data(ticker, start_date, end_date, relevance_score=0.):
     Returns:
         list: A list of dictionaries containing the fetched data.
     """
-
-    # SQL query using parameterized inputs
-    sql_query = """
+    sql_query = f"""
     SELECT 
         sentiment->>'relevance_score' as relevance_score, 
         sentiment->>'ticker_sentiment_score' as sentiment_score, 
         n.time_published, 
-        n.source_domain,
+        n.source,
+        n.authors,
         n.url,
         n.title,
         n.summary,
-        n.ticker_sentiment as json_data
+        n.overall_sentiment_score,
+        n.ticker_sentiment as tickers_json,
+        n.topics as topics_json
+        
     FROM 
-        news_data.all_news n,
+        {'public' if running_on_ec2 else 'news_data'}.all_news n,
         json_array_elements(n.ticker_sentiment) as sentiment
     WHERE 
         sentiment->>'ticker' = %s
@@ -40,32 +114,22 @@ def fetch_ticker_data(ticker, start_date, end_date, relevance_score=0.):
         AND n.time_published < %s
     ORDER BY n.time_published;
     """
+    params = (ticker, relevance_score, start_date, end_date)
+    # logger.debug(f"Executing query: {sql_query} with params: {params} on DB with host: {os.getenv('DB_HOST', None)}")
 
     try:
-        # Connect to the database using a with statement, which automatically handles closing
         with psycopg.connect(**conn_info) as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                # Execute the query with parameters
-                cur.execute(sql_query, (ticker, relevance_score, start_date, end_date))
-
-                # Fetch all rows from the last executed query
+                cur.execute(sql_query, params)
                 records = cur.fetchall()
 
-                # Check if any records were found
                 if records:
-                    pass
-                    # print(f"Data for ticker {ticker}:")
-                    # print(records[-1])
-                    # for row in records:
-                    #     print(f"Relevance Score: {row['relevance_score']}, Sentiment Score: {row['sentiment_score']}, Time Published: {row['time_published']}")
-                    # for row in records:
-                    #     print(row)
+                    logger.info(f"Fetched {len(records)} records for ticker {ticker}")
                 else:
-                    print("No data found for the given parameters.")
+                    logger.warning(f"No data found for ticker {ticker} with the given parameters.")
                 return records
 
     except psycopg.Error as e:
-        print(f"Database error: {e}")
+        logger.error(f"Database error: {e}")
     except Exception as e:
-        print(f"Error: {e}")
-
+        logger.exception(f"An unexpected error occurred: {e}")

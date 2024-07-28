@@ -1,17 +1,25 @@
+import logging
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # Import CORS
-
 import psycopg
-from psycopg.rows import dict_row
 import postgres_db as pgdb
-
-# import os
-# app.run(debug=os.getenv('FLASK_DEBUG', 'False') == 'True')
-
+import os
 
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:4200'])
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:4200", "http://michaelleitsin.com"]}})
+
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG,  # Set the logging level
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.FileHandler("app.log"),  # Log to a file
+                        logging.StreamHandler()  # Log to console
+                    ])
+
+logger = logging.getLogger(__name__)
+logger.debug("This is a debug message")
 
 
 def validate_date(date_text):
@@ -40,5 +48,27 @@ def get_sentiment():
         return jsonify({'error': str(e)}), 500
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# Test function to return the input received
+@app.route('/api/echo', methods=['GET'])
+def echo():
+    input_value = request.args.get('input', default='No input provided')
+    logger.info('Received input: %s', input_value)
+    return jsonify({'input': input_value})
+
+
+# Test function to return DB host and DB name
+@app.route('/api/dbinfo', methods=['GET'])
+def db_info():
+    host = os.getenv('DB_HOST', None)
+    db_name = os.getenv('DB_NAME', None)
+    lang = os.getenv('LANG', None)
+    logger.info('DB info - Host: %s, DB Name: %s', host, db_name)
+    return jsonify({'host': host, 'db_name': db_name, 'lang (test environ)': lang})
+
+
+# if __name__ == '__main__':
+#     app.run(debug=True)
+
+
+
+

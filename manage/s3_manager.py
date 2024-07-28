@@ -55,7 +55,7 @@ class S3Manager:
             aws_secret_access_key=aws_credentials.secret_key if aws_credentials else None
         )
 
-    def full_flow(self, modify_existing_bucket=False, upload_to_existing_bucket=False, delete_existing_bucket=False, delete_files=False, sync_files=False,
+    def full_flow(self, modify_existing_bucket=False, delete_existing_bucket=False, delete_files=False, sync_files=False,
                   dist_directory=None):
         if delete_existing_bucket:
             self.delete_bucket()
