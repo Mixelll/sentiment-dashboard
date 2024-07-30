@@ -1,14 +1,18 @@
 Data Sources: AlphaVantage API.
-Angular Frontend:
- Components:
+
+
+Angular Frontend Components:
+  
   :sentiment-chart: Timeseries chart of       stock sentiment score, with rich filtering UI.
 
-Flask Backend:
- Requests:
+
+Flask Backend Requests:
+  
   :get_sentiment_by_ticker: Executes an SQL query to get article rows filtered by dates and ticker sentiment score.
 
-AWS Deployment:
- Managers:
+
+
+AWS Deployment Managers:
  
   :HybridWebsiteManager: Uses the classes below to fully deploy the front and backend of a project to AWS S3, EC2 and RDS (with web-domain registration).
 
