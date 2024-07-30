@@ -9,6 +9,7 @@ Flask Backend:
 
 AWS Deployment:
  Managers:
+ 
   :HybridWebsiteManager: Uses the classes below to fully deploy the front and backend of a project to AWS S3, EC2 and RDS (with web-domain registration).
 
   :S3Manager: Creates (retrieves) an S3 bucket, modifies bucket settings and syncs files.
