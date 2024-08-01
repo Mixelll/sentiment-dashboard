@@ -229,79 +229,86 @@ export class SentimentChartComponent implements OnInit {
     }
   }
 
-  updateChart(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      console.log("This is running on the server or other non-browser environment");
-      return;
-    }
-    const canvas = document.getElementById('sentimentChart') as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      console.error('Failed to get context');
-      return;
-    }
+updateChart(): void {
+  if (!isPlatformBrowser(this.platformId)) {
+    console.log("This is running on the server or other non-browser environment");
+    return;
+  }
+  const canvas = document.getElementById('sentimentChart') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    console.error('Failed to get context');
+    return;
+  }
 
-    const selectedSources = this.selectedSourcesControl.value;
-    const selectedTopics = this.selectedTopicsControl.value;
-    const topicRelevanceThreshold = this.topicRelevanceScoreControl.value;
+  const selectedSources = this.selectedSourcesControl.value;
+  const selectedTopics = this.selectedTopicsControl.value;
+  const topicRelevanceThreshold = this.topicRelevanceScoreControl.value;
 
-    const plotLines = this.dateForm.get('plotLines')?.value;
+  const plotLines = this.dateForm.get('plotLines')?.value;
 
-    const datasets = Object.keys(this.fullData).map((ticker) => {
-      const dataPoints = this.fullData[ticker];
-      const filteredDataPoints = dataPoints.filter(d => {
-        const sourceMatch = selectedSources.length === 0 || selectedSources.includes(d.source);
-        const topicMatch = selectedTopics.length === 0 || d.topics_json.some(t => selectedTopics.includes(t.topic) && parseFloat(t.relevance_score) >= topicRelevanceThreshold);
-        return sourceMatch && topicMatch;
-      });
-      const dates: Point[] = filteredDataPoints.map((d: SentimentData) => ({ x: new Date(d.time_published).getTime(), y: parseFloat(d.sentiment_score) }));
-      const relevance = filteredDataPoints.map((d: SentimentData) => parseFloat(d.relevance_score));
-      const scaleByRelevance = this.dateForm.get('scaleByRelevance')?.value;
-      const scaleCircleByRelevance = this.dateForm.get('scaleCircleByRelevance')?.value;
+  // Create a mapping from the filtered data points to the original data points
+  const dataPointMapping: { [key: string]: SentimentData[] } = {};
 
-      const scores = scaleByRelevance
-        ? filteredDataPoints.map((d, index) => ({ x: new Date(d.time_published).getTime(), y: parseFloat(d.sentiment_score) * relevance[index] }))
-        : dates;
+  const datasets = Object.keys(this.fullData).map((ticker) => {
+    const dataPoints = this.fullData[ticker];
 
-      const color = this.colorMap[ticker];
-
-      return {
-        label: `${ticker} Sentiment Score`,
-        data: scores,
-        borderColor: plotLines ? color : 'rgba(0,0,0,0)',
-        backgroundColor: color,
-        pointRadius: scaleCircleByRelevance ? relevance.map(r => r * 10) : 5,
-        pointBorderColor: 'black', // Outline color
-        pointBackgroundColor: color // Dot color
-      };
+    const filteredDataPoints = dataPoints.filter(d => {
+      const sourceMatch = selectedSources.length === 0 || selectedSources.includes(d.source);
+      const topicMatch = selectedTopics.length === 0 || d.topics_json.some(t => selectedTopics.includes(t.topic) && parseFloat(t.relevance_score) >= topicRelevanceThreshold);
+      return sourceMatch && topicMatch;
     });
 
-    if (this.chart) {
-      this.chart.destroy();
-    }
+    // Store the mapping
+    dataPointMapping[ticker] = filteredDataPoints;
 
-    this.chart = new Chart(ctx as ChartItem, {
-      type: 'line',
-      data: {
-        datasets: datasets
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            type: 'time',
-            time: {
-              unit: 'day'
-            },
+    const dates: Point[] = filteredDataPoints.map((d: SentimentData) => ({ x: new Date(d.time_published).getTime(), y: parseFloat(d.sentiment_score) }));
+    const relevance = filteredDataPoints.map((d: SentimentData) => parseFloat(d.relevance_score));
+    const scaleByRelevance = this.dateForm.get('scaleByRelevance')?.value;
+    const scaleCircleByRelevance = this.dateForm.get('scaleCircleByRelevance')?.value;
+
+    const scores = scaleByRelevance
+      ? filteredDataPoints.map((d, index) => ({ x: new Date(d.time_published).getTime(), y: parseFloat(d.sentiment_score) * relevance[index] }))
+      : dates;
+    const color = this.colorMap[ticker];
+
+    return {
+      label: `${ticker} Sentiment Score`,
+      data: scores,
+      borderColor: plotLines ? color : 'rgba(0,0,0,0)',
+      backgroundColor: color,
+      pointRadius: scaleCircleByRelevance ? relevance.map(r => r * 10) : 5,
+      pointBorderColor: 'black', // Outline color
+      pointBackgroundColor: color // Dot color
+    };
+  });
+
+  if (this.chart) {
+    this.chart.destroy();
+  }
+
+  this.chart = new Chart(ctx as ChartItem, {
+    type: 'line',
+    data: {
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            unit: 'day'
+          },
           ticks: {
             font: {
               size: 20, // Increase this value to make the font larger
               weight: 'bold'
             }
           }
-          },
-          y: {
+        },
+        y: {
           beginAtZero: true,
           ticks: {
             font: {
@@ -311,59 +318,43 @@ export class SentimentChartComponent implements OnInit {
           }
         }
       },
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: (context: ChartJSTooltipItem<'line'>) => {
-                const datasetLabel = context.dataset.label || '';
-                const ticker = datasetLabel.split(' ')[0];
-                const dataPoints = this.fullData[ticker];
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: (context: ChartJSTooltipItem<'line'>) => {
+              const datasetLabel = context.dataset.label || '';
+              const ticker = datasetLabel.split(' ')[0];
+              const dataPoints = dataPointMapping[ticker];
 
-                if (dataPoints) {
-                  const dataPoint = dataPoints[context.dataIndex];
-                  const numOfRelatedTickers = dataPoint.tickers_json.length;
-                  const numOfTopics = dataPoint.topics_json.length;
+              if (dataPoints) {
+                const dataPoint = dataPoints[context.dataIndex];
+                const numOfRelatedTickers = dataPoint.tickers_json.length;
+                const numOfTopics = dataPoint.topics_json.length;
 
-                  return [
-                    `URL: ${dataPoint.url}`,
-                    `Source: ${dataPoint.source}`,
-                    `Date: ${dataPoint.time_published}`,
-                    `Score: ${dataPoint.sentiment_score}`,
-                    `Relevance: ${dataPoint.relevance_score}`,
-                    `Title: ${dataPoint.title}`,
-                    `Summary: ${dataPoint.summary}`,
-                    `Number of Related Tickers: ${numOfRelatedTickers}`,
-                    `Ticker Sentiment:\n${dataPoint.tickers_json.map((item: any) =>
-                      `Ticker: ${item.ticker}, Relevance Score: ${item.relevance_score}, Score: ${item.ticker_sentiment_score}, Label: ${item.ticker_sentiment_label}`).join('\n')}`,
-                    `Number of Associated Topics: ${numOfTopics}`,
-                    `Topic Relevance:\n${dataPoint.topics_json.map((item: any) => `${item.topic}: ${item.relevance_score}`).join('\n')}`
-                  ];
-                }
-
-                return [];
+                return [
+                  `URL: ${dataPoint.url}`,
+                  `Source: ${dataPoint.source}`,
+                  `Date: ${dataPoint.time_published}`,
+                  `Score: ${dataPoint.sentiment_score}`,
+                  `Relevance: ${dataPoint.relevance_score}`,
+                  `Title: ${dataPoint.title}`,
+                  `Summary: ${dataPoint.summary}`,
+                  `Number of Related Tickers: ${numOfRelatedTickers}`,
+                  `Ticker Sentiment:\n${dataPoint.tickers_json.map((item: any) =>
+                    `Ticker: ${item.ticker}, Relevance Score: ${item.relevance_score}, Score: ${item.ticker_sentiment_score}, Label: ${item.ticker_sentiment_label}`).join('\n')}`,
+                  `Number of Associated Topics: ${numOfTopics}`,
+                  `Topic Relevance:\n${dataPoint.topics_json.map((item: any) => `${item.topic}: ${item.relevance_score}`).join('\n')}`
+                ];
               }
+
+              return [];
             }
           }
         }
       }
-    });
+    }
+  });
 
-    canvas.onclick = (event) => {
-      const points = this.chart?.getElementsAtEventForMode(event, 'nearest', { intersect: true }, false);
-      if (points?.length) {
-        const firstPoint = points[0];
-        const datasetIndex = firstPoint.datasetIndex;
-        const index = firstPoint.index;
-        const datasetLabel = this.chart?.data.datasets[datasetIndex].label || '';
-        const ticker = datasetLabel.split(' ')[0];
-        const dataPoints = this.fullData[ticker];
-
-        if (dataPoints) {
-          const data = dataPoints[index];
-          this.openDialog(data);
-        }
-      }
-    };
 
     console.log('Chart updated successfully');
   }

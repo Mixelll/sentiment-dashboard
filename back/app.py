@@ -66,8 +66,8 @@ def db_info():
     return jsonify({'host': host, 'db_name': db_name, 'lang (test environ)': lang})
 
 
-# if __name__ == '__main__':
-#     app.run(debug=True)
+if __name__ == '__main__':
+    app.run(debug=True)
 
 
 
