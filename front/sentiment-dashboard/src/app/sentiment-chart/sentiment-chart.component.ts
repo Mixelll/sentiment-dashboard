@@ -199,7 +199,7 @@ export class SentimentChartComponent implements OnInit {
 
   extractSources(data: SentimentData[]): void {
     const sources = data.map(d => d.source);
-    const uniqueSources = Array.from(new Set(sources));
+    const uniqueSources = Array.from(new Set(sources)).sort(); // Sort the sources alphabetically
     uniqueSources.forEach(source => {
       if (!this.sourcesList.includes(source)) {
         this.sourcesList.push(source);
@@ -210,7 +210,7 @@ export class SentimentChartComponent implements OnInit {
 
   extractTopics(data: SentimentData[]): void {
     const topics = data.flatMap(d => d.topics_json.map(t => t.topic));
-    const uniqueTopics = Array.from(new Set(topics));
+    const uniqueTopics = Array.from(new Set(topics)).sort(); // Sort the topics alphabetically
     uniqueTopics.forEach(topic => {
       if (!this.topicsList.includes(topic)) {
         this.topicsList.push(topic);
@@ -294,7 +294,7 @@ updateChart(): void {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
+      maintainAspectRatio: false, // Change this to true to fit the chart to the screen
       scales: {
         x: {
           type: 'time',
@@ -335,15 +335,15 @@ updateChart(): void {
                   `URL: ${dataPoint.url}`,
                   `Source: ${dataPoint.source}`,
                   `Date: ${dataPoint.time_published}`,
-                  `Score: ${dataPoint.sentiment_score}`,
-                  `Relevance: ${dataPoint.relevance_score}`,
+                  `Score: ${parseFloat(dataPoint.sentiment_score).toFixed(2)}`,
+                  `Relevance: ${parseFloat(dataPoint.relevance_score).toFixed(2)}`,
                   `Title: ${dataPoint.title}`,
                   `Summary: ${dataPoint.summary}`,
                   `Number of Related Tickers: ${numOfRelatedTickers}`,
                   `Ticker Sentiment:\n${dataPoint.tickers_json.map((item: any) =>
-                    `Ticker: ${item.ticker}, Relevance Score: ${item.relevance_score}, Score: ${item.ticker_sentiment_score}, Label: ${item.ticker_sentiment_label}`).join('\n')}`,
+                    `Ticker: ${item.ticker}, Relevance Score: ${parseFloat(item.relevance_score).toFixed(2)}, Score: ${parseFloat(item.ticker_sentiment_score).toFixed(2)}, Label: ${item.ticker_sentiment_label}`).join('\n')}`,
                   `Number of Associated Topics: ${numOfTopics}`,
-                  `Topic Relevance:\n${dataPoint.topics_json.map((item: any) => `${item.topic}: ${item.relevance_score}`).join('\n')}`
+                  `Topic Relevance:\n${dataPoint.topics_json.map((item: any) => `${item.topic}: ${parseFloat(item.relevance_score).toFixed(2)}`).join('\n')}`
                 ];
               }
 
@@ -355,9 +355,26 @@ updateChart(): void {
     }
   });
 
+  canvas.onclick = (event) => {
+    const points = this.chart?.getElementsAtEventForMode(event, 'nearest', { intersect: true }, false);
+    if (points?.length) {
+      const firstPoint = points[0];
+      const datasetIndex = firstPoint.datasetIndex;
+      const index = firstPoint.index;
+      const datasetLabel = this.chart?.data.datasets[datasetIndex].label || '';
+      const ticker = datasetLabel.split(' ')[0];
+      const dataPoints = dataPointMapping[ticker];
 
-    console.log('Chart updated successfully');
-  }
+      if (dataPoints) {
+        const data = dataPoints[index];
+        this.openDialog(data);
+      }
+    }
+  };
+
+  console.log('Chart updated successfully');
+}
+
 
   onSubmit(): void {
     console.log('Form submitted:', this.dateForm.value);
@@ -365,8 +382,15 @@ updateChart(): void {
     const currentEndDate = format(this.dateForm.get('endDate')?.value ?? new Date('2024-08-01'), 'yyyy-MM-dd');
     const currentRelevanceScore = this.dateForm.get('relevanceScore')?.value || 0;
 
-    // Check if we need to refresh the data
-    if (this.lastStartDate !== currentStartDate || this.lastEndDate !== currentEndDate || this.lastRelevanceScore !== currentRelevanceScore) {
+    // Check if the new date range is outside the last fetched date range
+    const isOutsideFetchedRange =
+      !this.lastStartDate ||
+      !this.lastEndDate ||
+      currentStartDate < this.lastStartDate ||
+      currentEndDate > this.lastEndDate;
+
+    // Refresh data if the new date range is outside the last fetched date range
+    if (isOutsideFetchedRange || this.lastRelevanceScore !== currentRelevanceScore) {
       this.fetchedTickers.clear(); // Clear the fetched tickers set to force refreshing all data
       this.tickersList.forEach(ticker => this.loadData(ticker));
       this.lastStartDate = currentStartDate;
@@ -377,6 +401,7 @@ updateChart(): void {
       this.updateChart();
     }
   }
+
 
   openDialog(data: any): void {
     this.dialog.open(SentimentDialogComponent, {

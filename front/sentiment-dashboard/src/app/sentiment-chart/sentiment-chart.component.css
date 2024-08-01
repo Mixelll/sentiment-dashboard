@@ -1,6 +1,11 @@
+#chart-container {
+  position: relative;
+  width: calc(100% - 20px);;
+  height: calc(100vh - 110px); /* Adjust this value based on the height of your form */
+  overflow: hidden; /* Ensures no overflow */
+}
+
 #sentimentChart {
-  max-width: 8000px;
-  max-height: 4000px;
   width: 100%;
-  height: auto;
+  height: 100%;
 }
