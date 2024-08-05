@@ -39,7 +39,8 @@ class LocalPostgresManager:
         conn_string = self._get_conn_string(port=port)
         full_source_table = f"{source_schema}.{source_table}" if source_schema else source_table
         full_temp_table = f"{temp_schema}.{temp_table_name}" if temp_schema else temp_table_name
-        sql_command = f"CREATE TABLE IF NOT EXISTS {full_temp_table} AS SELECT {', '.join(columns)} FROM {full_source_table};"
+        self.drop_table(temp_table_name, schema=temp_schema, port=port, pg_path=pg_path)
+        sql_command = f"CREATE TABLE {full_temp_table} AS SELECT {', '.join(columns)} FROM {full_source_table};"
 
         pg_path = self.attach_utility_to_path('psql', pg_path)
 
@@ -55,6 +56,34 @@ class LocalPostgresManager:
             print(f"Temporary table {full_temp_table} created with columns {columns} in schema {source_schema if source_schema else 'public'}.")
         else:
             print(f"Failed to create temporary table {full_temp_table}. Error: {result.stderr}")
+
+    def drop_table(self, table_name, schema=None, port=None, pg_path=None):
+        """
+        Drops a specified table from a given schema.
+
+        :param table_name: Name of the table to drop.
+        :param schema: Schema of the table.
+        :param pg_path: Full path to the psql binary of the desired PostgreSQL version.
+        :param port: Port number of the PostgreSQL server.
+        """
+        conn_string = self._get_conn_string(port=port)
+        full_table_name = f"{schema}.{table_name}" if schema else table_name
+        sql_command = f"DROP TABLE IF EXISTS {full_table_name} CASCADE;"
+
+        pg_path = self.attach_utility_to_path('psql', pg_path)
+
+        psql_command = [
+            pg_path,
+            '-d', conn_string,
+            '-c', sql_command
+        ]
+        print(f"Executing command (subprocess): {self.rectify_command(psql_command)}")
+        result = subprocess.run(psql_command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if result.returncode == 0:
+            print(f"Table {full_table_name} dropped successfully.")
+        else:
+            print(f"Failed to drop table {full_table_name}. Error: {result.stderr}")
 
     def dump_table(self, table_name, dump_file_path, schema=None, port=None, pg_path=None):
         # Ensure directory exists
@@ -109,13 +138,13 @@ class LocalPostgresManager:
             subprocess.run(restore_command, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except subprocess.CalledProcessError as e:
             if "Command was: DROP TABLE" in e.stderr:
-                warn("Attemtping to drop non-existent table. Continuing...")
+                warn("Attempting to drop non-existent table. Continuing...")
             else:
                 raise Exception(f"Failed to restore table. Error: {e.stderr}")
 
         print(f"Table restored to {self.db_config['dbname']} on port {port}.")
 
-    def pg_dump_restore_between_versions(self, table_name, schema=None, source_port=None, target_port=None):
+    def pg_dump_restore_between_versions(self, table_name, schema=None, source_port=None, target_port=None, drop_if_exists=True):
         ver_config = self.dump_restore_config_versions
         source_port = source_port if source_port else ver_config['source_port']
         target_port = target_port if target_port else ver_config['target_port']
@@ -128,6 +157,8 @@ class LocalPostgresManager:
         pg_path = self.dump_restore_config_versions['pg_path']
         dump_file_path = fr"tmp\{table_name}_version_switch.dump"
         dumped_path = self.dump_table(table_name, dump_file_path, schema=schema, port=source_port, pg_path=pg_path)
+        if drop_if_exists:
+            self.drop_table(table_name, schema=schema, port=target_port, pg_path=pg_path)
         self.restore_table(dumped_path, port=target_port, pg_path=pg_path)
         return {'port': target_port, 'pg_path': ver_config['output_pg_path']}
 

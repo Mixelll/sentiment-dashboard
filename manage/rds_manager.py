@@ -102,14 +102,14 @@ class RDSManager:
         # Step 2: Restore the dump file to the RDS instance from the EC2 instance
         # schema_option = f"--schema={schema}" if schema else ""
         restore_command = f"pg_restore -d {rds_db_url} /tmp/sentiment_temp.dump"
-        self.ec2_manager._run_commands_via_ssh([restore_command])
+        self.ec2_manager.run_commands_via_ssh_([restore_command])
 
     def restore_table_to_rds(self, dump_file_path, table_name=None, schema='public', public=False, rds_db_url=None, drop_if_exists=True):
         """Restores a table dump to the RDS database, considering schema and drops the table if it exists."""
         if not rds_db_url:
             rds_db_url = self.get_rds_db_url()
         if drop_if_exists:
-            drop_table_command = f"psql {rds_db_url} -c \"DROP TABLE IF EXISTS {schema}.{table_name} CASCADE;\""
+            drop_table_command = f"psql -d {rds_db_url} -c \"DROP TABLE IF EXISTS {schema}.{table_name} CASCADE;\""
             # _drop_table_command = f'"DROP TABLE IF EXISTS {schema}.{table_name} CASCADE;"'
             # drop_table_command = [
             #     "psql",
@@ -120,7 +120,7 @@ class RDSManager:
             try:
                 # Drop the table if it exists
                 print("Executing command (subprocess):", drop_table_command)
-                subprocess.run(drop_table_command, shell=False, check=True)
+                subprocess.run(drop_table_command, shell=True, check=True)
                 print(f"Table {schema}.{table_name} dropped if it existed.")
             except subprocess.CalledProcessError as e:
                 print(f"Failed to drop table {schema}.{table_name}. Error: {e.stderr}")
@@ -150,7 +150,41 @@ class RDSManager:
                 f'psql {rds_db_url} -c "SELECT table_name FROM information_schema.tables WHERE table_schema = \'{schema}\';"'
             )
 
-        self.ec2_manager._run_commands_via_ssh(verification_commands)
+        self.ec2_manager.run_commands_via_ssh_(verification_commands)
+
+
+    # def drop_table_or_schema_via_ssh(self, table=None, schema='public', drop_schema=False, rds_db_url=None):
+    #     """Drop a table or entire schema in the RDS via SSH."""
+    #     if not rds_db_url:
+    #         rds_db_url = self.get_rds_db_url()
+    #     drop_commands = []
+    #
+    #     if table and not drop_schema:
+    #         # Command to drop a specific table
+    #         drop_commands.append(
+    #             f'psql {rds_db_url} -c "DROP TABLE IF EXISTS {schema}.{table} CASCADE;"'
+    #         )
+    #     elif drop_schema:
+    #         # Command to drop an entire schema
+    #         drop_commands.append(
+    #             f'psql {rds_db_url} -c "DROP SCHEMA IF EXISTS {schema} CASCADE;"'
+    #         )
+    #     else:
+    #         # If no table or schema is specified, raise an error or handle accordingly
+    #         raise ValueError("No table specified for dropping, and drop_schema is False.")
+    #
+    #     # Run the command via SSH (assuming _run_commands_via_ssh is implemented)
+    #     self.ec2_manager._run_commands_via_ssh(drop_commands)
+
+    # Usage
+    # try:
+    #     # To drop a specific table
+    #     instance.drop_table_or_schema_via_ssh(table='my_table', schema='public')
+    #
+    #     # To drop an entire schema
+    #     instance.drop_table_or_schema_via_ssh(schema='public', drop_schema=True)
+    # except ValueError as e:
+    #     print(str(e))
 
     def get_rds_db_config(self):
         db_config = {

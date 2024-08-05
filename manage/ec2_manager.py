@@ -48,6 +48,10 @@ class EC2Manager:
             self.ssm_client = boto3.client('ssm', region_name=config.region)
         self.iam_manager = iam_manager if iam_manager else IAMManager(aws_credentials)
         self.instance_id = config.instance_id
+        if self.instance_id:
+            self.wait_for_instance(self.instance_id, 'running')
+            instance_info = self.check_instance_status(self.instance_id)
+            self.config.public_dns_name = instance_info.get('PublicDnsName')
 
     def full_flow(self, setup_security=True, security_mode=None, create_instance=True, setup_iam=True, fallback_to_ssh=True, force_ssh=False, installs=True,
                   clone_git=True, start_service=True):
@@ -56,6 +60,7 @@ class EC2Manager:
             self.setup_security_group(sg_id, mode=security_mode)
 
         self.instance_id = self.setup_ec2(sg_id, create_instance=create_instance)
+
         if self.instance_id:
             if setup_iam:
                 self.ensure_iam_roles()
@@ -107,7 +112,7 @@ class EC2Manager:
         except Exception as e:
             print(f"Failed to run commands via SSH: {e}")
 
-    def _run_commands_via_ssh(self, commands, sleep=None, chain=False):
+    def run_commands_via_ssh_(self, commands, sleep=None, chain=False):
         return self.run_commands_via_ssh(self.config.public_dns_name, self.config.key_path, commands, sleep, chain, user=self.config.user)
 
     def create_or_get_security_group(self, security_group_name=None, description=None, vpc_id=None):
@@ -260,131 +265,6 @@ class EC2Manager:
             ssh_client.close()
         except Exception as e:
             print(f"Failed to upload file to EC2: {e}")
-
-    # def ensure_iam_roles(self):
-    #     """Ensure the IAM roles and instance profiles exist and are correctly configured."""
-    #     iam_role = 'AmazonSSMManagedInstanceCore'
-    #     profile_name = 'AmazonSSMManagedInstanceCore'
-    #     # profile_name = 'EC2SSMInstanceProfile'
-    #     service_role = 'AWSServiceRoleForAmazonSSM'
-    #
-    #     # Ensure AmazonSSMManagedInstanceCore IAM role exists
-    #     try:
-    #         self.iam_client.get_role(RoleName=iam_role)
-    #         print(f"IAM role {iam_role} already exists.")
-    #     except self.iam_client.exceptions.NoSuchEntityException:
-    #         self.iam_client.create_role(
-    #             RoleName=iam_role,
-    #             AssumeRolePolicyDocument=json.dumps({
-    #                 "Version": "2012-10-17",
-    #                 "Statement": [
-    #                     {
-    #                         "Effect": "Allow",
-    #                         "Action": [
-    #                             "sts:AssumeRole"
-    #                         ],
-    #                         "Principal": {
-    #                             "Service": [
-    #                                 "ec2.amazonaws.com"
-    #                             ]
-    #                         }
-    #                     }
-    #                 ]
-    #             })
-    #         )
-    #         self.iam_client.attach_role_policy(
-    #             RoleName=iam_role,
-    #             PolicyArn='arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
-    #         )
-    #         print(f"IAM role {iam_role} created and policy attached.")
-    #
-    #     # Ensure AWSServiceRoleForAmazonSSM service-linked role exists
-    #     try:
-    #         self.iam_client.get_role(RoleName=service_role)
-    #         print(f"Service-linked role {service_role} already exists.")
-    #     except self.iam_client.exceptions.NoSuchEntityException:
-    #         self.iam_client.create_service_linked_role(
-    #             AWSServiceName='ssm.amazonaws.com',
-    #             Description='Service-linked role for Systems Manager'
-    #         )
-    #         print(f"Service-linked role {service_role} created.")
-    #
-    #     # Create instance profile if it doesn't exist
-    #     try:
-    #         self.iam_client.get_instance_profile(InstanceProfileName=profile_name)
-    #         print(f"Instance profile {profile_name} already exists.")
-    #     except self.iam_client.exceptions.NoSuchEntityException:
-    #         self.iam_client.create_instance_profile(InstanceProfileName=profile_name)
-    #         self.iam_client.add_role_to_instance_profile(
-    #             InstanceProfileName=profile_name,
-    #             RoleName=iam_role
-    #         )
-    #         print(f"Instance profile {profile_name} created and role {iam_role} added.")
-    #
-    # def ensure_iam_roles(self):
-    #     """Ensure the IAM roles and instance profiles exist and are correctly configured."""
-    #     iam_role = 'AmazonSSMManagedInstanceCore'
-    #     profile_name = 'AmazonSSMManagedInstanceCore'
-    #     service_role = 'AWSServiceRoleForAmazonSSM'
-    #     policy_arns = [
-    #         'arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess',
-    #         'arn:aws:iam::aws:policy/AmazonSSMFullAccess',
-    #         'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
-    #     ]
-    #
-    #     # Ensure AmazonSSMManagedInstanceCore IAM role exists
-    #     try:
-    #         self.iam_client.get_role(RoleName=iam_role)
-    #         print(f"IAM role {iam_role} already exists.")
-    #     except self.iam_client.exceptions.NoSuchEntityException:
-    #         self.iam_client.create_role(
-    #             RoleName=iam_role,
-    #             AssumeRolePolicyDocument=json.dumps({
-    #                 "Version": "2012-10-17",
-    #                 "Statement": [
-    #                     {
-    #                         "Effect": "Allow",
-    #                         "Action": [
-    #                             "sts:AssumeRole"
-    #                         ],
-    #                         "Principal": {
-    #                             "Service": [
-    #                                 "ec2.amazonaws.com"
-    #                             ]
-    #                         }
-    #                     }
-    #                 ]
-    #             })
-    #         )
-    #         for policy_arn in policy_arns:
-    #             self.iam_client.attach_role_policy(
-    #                 RoleName=iam_role,
-    #                 PolicyArn=policy_arn
-    #             )
-    #         print(f"IAM role {iam_role} created and following policies attached:\n{'\n'.join(policy_arns)}")
-    #
-    #     # Ensure AWSServiceRoleForAmazonSSM service-linked role exists
-    #     try:
-    #         self.iam_client.get_role(RoleName=service_role)
-    #         print(f"Service-linked role {service_role} already exists.")
-    #     except self.iam_client.exceptions.NoSuchEntityException:
-    #         self.iam_client.create_service_linked_role(
-    #             AWSServiceName='ssm.amazonaws.com',
-    #             Description='Service-linked role for Systems Manager'
-    #         )
-    #         print(f"Service-linked role {service_role} created.")
-    #
-    #     # Create instance profile if it doesn't exist
-    #     try:
-    #         self.iam_client.get_instance_profile(InstanceProfileName=profile_name)
-    #         print(f"Instance profile {profile_name} already exists.")
-    #     except self.iam_client.exceptions.NoSuchEntityException:
-    #         self.iam_client.create_instance_profile(InstanceProfileName=profile_name)
-    #         self.iam_client.add_role_to_instance_profile(
-    #             InstanceProfileName=profile_name,
-    #             RoleName=iam_role
-    #         )
-    #         print(f"Instance profile {profile_name} created and role {iam_role} added.")
 
     def ensure_iam_roles(self):
         """Ensure the IAM roles and instance profiles exist and are correctly configured."""
