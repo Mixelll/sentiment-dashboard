@@ -81,7 +81,7 @@ class EC2Manager:
                 if clone_git:
                     self.clone_git_repository(sleep=10)
                 if start_service:
-                    self.execute_commands(self.config.start_service_commands, sleep=10)
+                    self.execute_commands(self.config.start_service_commands, sleep=2)
 
         return self.instance_id
 

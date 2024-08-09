@@ -47,6 +47,16 @@
     </mat-select>
   </mat-form-field>
 
+  <!-- Dropdown for excluding sources with tooltip -->
+  <mat-form-field appearance="fill" matTooltip="{{ getExcludedSourcesTooltip() }}">
+    <mat-label>Exclude Sources</mat-label>
+    <mat-select [formControl]="excludedSourcesControl" multiple>
+      <mat-option *ngFor="let source of sourcesList" [value]="source">
+        {{ source }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
   <!-- Dropdown for topic selection with tooltip -->
   <mat-form-field appearance="fill" matTooltip="{{ getSelectedTopicsTooltip() }}">
     <mat-label>Filter by Topics</mat-label>
@@ -68,7 +78,4 @@
 <div style="text-align: center;">
   <p><strong>Hover over and click on the points in the chart for more details.</strong></p>
 </div>
-
-<div id="chart-container">
-  <canvas id="sentimentChart"></canvas>
-</div>
+<canvas id="sentimentChart"></canvas>

@@ -26,6 +26,7 @@ class HybridWebsiteManager:
         self.rds_manager = RDSManager(config.rds_config, aws_credentials, ec2_manager=self.ec2_manager, local_db_credentials=local_db_cred, local_dump_restore_config_versions=local_dump_restore_config)
         self.route53_manager = Route53Manager(config.route53_config, aws_credentials, domain_config=self.config.route53domains_config)
         self.parameter_store_manager = ParameterStoreManager(aws_credentials=aws_credentials, region_name=config.ec2_config.region)
+
     def full_flow(self, full_flow_defaults=False, s3=True, ec2=True, rds=True, route53=True, parameter_store=True,  s3_full=False, ec2_full=False, rds_full=False, route53_full=False, data_transfer_config=None, **kwargs):
         kfn = lambda name, default=None: kwargs.get(name, default)
         d = full_flow_defaults
@@ -243,8 +244,8 @@ if __name__ == '__main__':
 
     # Initialize and run Hybrid Website Manager
     hybrid_manager = HybridWebsiteManager(hybrid_config, aws_credentials=aws_credentials_source)
-    hybrid_manager.full_flow(s3=False, s3_full=False, delete_files=True, sync_files=True, modify_existing_bucket=False, delete_existing_bucket=False,
-                             ec2=True, ec2_full=False, force_ssh=True, installs=False, clone_git=False, start_service=True, setup_iam=False,
+    hybrid_manager.full_flow(s3=True, s3_full=False, delete_files=True, sync_files=True, modify_existing_bucket=False, delete_existing_bucket=False,
+                             ec2=False, ec2_full=False, force_ssh=True, installs=False, clone_git=False, start_service=True, setup_iam=False,
                              rds=False, rds_full=False, transfer_data=True, data_transfer_config=data_transfer_config_,
                              route53=False, route53_full=False,
                              parameter_store=False,

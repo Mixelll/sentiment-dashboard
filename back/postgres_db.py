@@ -74,7 +74,7 @@ else:
     conn_info = postgres_credentials.__dict__
 
 logger.info(f"Running on EC2: {running_on_ec2}")
-logger.debug(f"Database connection info: {conn_info}")
+# logger.debug(f"Database connection info: {conn_info}")
 
 
 def fetch_ticker_data(ticker, start_date, end_date, relevance_score=0.):
