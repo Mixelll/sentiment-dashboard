@@ -79,7 +79,7 @@ class EC2Manager:
                 if installs:
                     self.execute_commands(self.config.setup_commands)
                 if clone_git:
-                    self.clone_git_repository(sleep=10)
+                    self.clone_git_repository(sleep=5)
                 if start_service:
                     self.execute_commands(self.config.start_service_commands, sleep=2)
 
@@ -341,7 +341,7 @@ class EC2Manager:
             return False
 
     def execute_single_command(self, instance_id, commands):
-        """Execute multiple commands on the instance using SSM."""
+        """Execute single command on the instance using SSM."""
         try:
             # Combine the commands into a single command string separated by '&&'
             combined_command = ' && '.join(commands) if isinstance(commands, (list, tuple)) else commands
@@ -353,7 +353,7 @@ class EC2Manager:
                 TimeoutSeconds=300
             )
             command_id = response['Command']['CommandId']
-            time.sleep(5)  # Wait a bit before checking the command output
+            time.sleep(2)  # Wait a bit before checking the command output
             output = self.ssm_client.get_command_invocation(
                 CommandId=command_id,
                 InstanceId=instance_id

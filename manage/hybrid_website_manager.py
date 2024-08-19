@@ -244,9 +244,9 @@ if __name__ == '__main__':
 
     # Initialize and run Hybrid Website Manager
     hybrid_manager = HybridWebsiteManager(hybrid_config, aws_credentials=aws_credentials_source)
-    hybrid_manager.full_flow(s3=True, s3_full=False, delete_files=True, sync_files=True, modify_existing_bucket=False, delete_existing_bucket=False,
+    hybrid_manager.full_flow(s3=False, s3_full=False, delete_files=True, sync_files=True, modify_existing_bucket=False, delete_existing_bucket=False,
                              ec2=False, ec2_full=False, force_ssh=True, installs=False, clone_git=False, start_service=True, setup_iam=False,
-                             rds=False, rds_full=False, transfer_data=True, data_transfer_config=data_transfer_config_,
+                             rds=True, rds_full=False, transfer_data=True, data_transfer_config=data_transfer_config_,
                              route53=False, route53_full=False,
                              parameter_store=False,
                              setup_security=False, security_mode=None)

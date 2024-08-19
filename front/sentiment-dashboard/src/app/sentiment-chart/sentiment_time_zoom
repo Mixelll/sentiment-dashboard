@@ -249,170 +249,231 @@ export class SentimentChartComponent implements OnInit {
     }
   }
 
-  updateChart(): void {
+updateChart(): void {
     if (!isPlatformBrowser(this.platformId)) {
-      console.log("This is running on the server or other non-browser environment");
-      return;
+        console.log("This is running on the server or other non-browser environment");
+        return;
     }
     const canvas = document.getElementById('sentimentChart') as HTMLCanvasElement;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.error('Failed to get context');
-      return;
+        console.error('Failed to get context');
+        return;
     }
 
     const selectedSources = this.selectedSourcesControl.value;
-    const excludedSources = this.excludedSourcesControl.value; // Get the excluded sources
+    const excludedSources = this.excludedSourcesControl.value;
     const selectedTopics = this.selectedTopicsControl.value;
     const topicRelevanceThreshold = this.topicRelevanceScoreControl.value;
 
     const plotLines = this.dateForm.get('plotLines')?.value;
 
-    // Create a mapping from the filtered data points to the original data points
     const dataPointMapping: { [key: string]: SentimentData[] } = {};
 
     const datasets = Object.keys(this.fullData).map((ticker) => {
-      const dataPoints = this.fullData[ticker];
+        const dataPoints = this.fullData[ticker];
 
-      const filteredDataPoints = dataPoints.filter(d => {
-        const sourceMatch = selectedSources.length === 0 || selectedSources.includes(d.source);
-        const excludeSourceMatch = excludedSources.length > 0 && excludedSources.includes(d.source);
-        const topicMatch = selectedTopics.length === 0 || d.topics_json.some(t => selectedTopics.includes(t.topic) && parseFloat(t.relevance_score) >= topicRelevanceThreshold);
-        return sourceMatch && !excludeSourceMatch && topicMatch; // Apply exclude sources condition
-      });
+        const filteredDataPoints = dataPoints.filter(d => {
+            const sourceMatch = selectedSources.length === 0 || selectedSources.includes(d.source);
+            const excludeSourceMatch = excludedSources.length > 0 && excludedSources.includes(d.source);
+            const topicMatch = selectedTopics.length === 0 || d.topics_json.some(t => selectedTopics.includes(t.topic) && parseFloat(t.relevance_score) >= topicRelevanceThreshold);
+            return sourceMatch && !excludeSourceMatch && topicMatch;
+        });
 
-      // Store the mapping
-      dataPointMapping[ticker] = filteredDataPoints;
+        dataPointMapping[ticker] = filteredDataPoints;
 
-      const dates: Point[] = filteredDataPoints.map((d: SentimentData) => ({ x: new Date(d.time_published).getTime(), y: parseFloat(d.sentiment_score) }));
-      const relevance = filteredDataPoints.map((d: SentimentData) => parseFloat(d.relevance_score));
-      const scaleByRelevance = this.dateForm.get('scaleByRelevance')?.value;
-      const scaleCircleByRelevance = this.dateForm.get('scaleCircleByRelevance')?.value;
+        const dates: Point[] = filteredDataPoints.map((d: SentimentData) => ({
+            x: new Date(d.time_published).getTime(),
+            y: parseFloat(d.sentiment_score)
+        }));
+        const relevance = filteredDataPoints.map((d: SentimentData) => parseFloat(d.relevance_score));
+        const scaleByRelevance = this.dateForm.get('scaleByRelevance')?.value;
+        const scaleCircleByRelevance = this.dateForm.get('scaleCircleByRelevance')?.value;
 
-      const scores = scaleByRelevance
-        ? filteredDataPoints.map((d, index) => ({ x: new Date(d.time_published).getTime(), y: parseFloat(d.sentiment_score) * relevance[index] }))
-        : dates;
-      const color = this.colorMap[ticker];
+        const scores = scaleByRelevance
+            ? filteredDataPoints.map((d, index) => ({
+                x: new Date(d.time_published).getTime(),
+                y: parseFloat(d.sentiment_score) * relevance[index]
+            }))
+            : dates;
+        const color = this.colorMap[ticker];
 
-      return {
-        label: `${ticker} Sentiment Score`,
-        data: scores,
-        borderColor: plotLines ? color : 'rgba(0,0,0,0)',
-        backgroundColor: color,
-        pointRadius: scaleCircleByRelevance ? relevance.map(r => r * 10) : 5,
-        pointBorderColor: 'black', // Outline color
-        pointBackgroundColor: color // Dot color
-      };
+        return {
+            label: `${ticker} Sentiment Score`,
+            data: scores,
+            borderColor: plotLines ? color : 'rgba(0,0,0,0)',
+            backgroundColor: color,
+            pointRadius: scaleCircleByRelevance ? relevance.map(r => r * 10) : 5,
+            pointBorderColor: 'black',
+            pointBackgroundColor: color
+        };
     });
 
     if (this.chart) {
-      this.chart.destroy();
+        this.chart.destroy();
     }
 
     this.chart = new Chart(ctx as ChartItem, {
-      type: 'line',
-      data: {
-        datasets: datasets
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false, // Change this to true to fit the chart to the screen
-        scales: {
-          x: {
-            type: 'time',
-            time: {
-              unit: 'day'
-            },
-            ticks: {
-              font: {
-                size: 20, // Increase this value to make the font larger
-                weight: 'bold'
-              }
-            }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              font: {
-                size: 23, // Increase this value to make the font larger
-                weight: 'bold'
-              }
-            }
-          }
+        type: 'line',
+        data: {
+            datasets: datasets
         },
-        plugins: {
-          zoom: {
-            pan: {
-              enabled: true,
-              mode: 'x',
-              modifierKey: 'ctrl',
-            },
-            zoom: {
-              wheel: {
-                enabled: true,
-                modifierKey: 'ctrl',
-              },
-              pinch: {
-                enabled: true
-              },
-              mode: 'x',
-            }
-          },
-          tooltip: {
-            callbacks: {
-              label: (context: ChartJSTooltipItem<'line'>) => {
-                const datasetLabel = context.dataset.label || '';
-                const ticker = datasetLabel.split(' ')[0];
-                const dataPoints = dataPointMapping[ticker];
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'time',
+                    adapters: {
+                        date: {
+                            // Configure date adapter (e.g., date-fns)
+                        },
+                    },
+                    time: {
+                        tooltipFormat: 'MMM dd, yyyy, HH:mm',
+                        displayFormats: {
+                            millisecond: 'HH:mm:ss.SSS',
+                            second: 'HH:mm:ss',
+                            minute: 'HH:mm',
+                            hour: 'MMM dd, HH:mm',
+                            day: 'MMM dd',
+                            week: 'MMM dd',
+                            month: 'MMM yyyy',
+                            quarter: 'MMM yyyy',
+                            year: 'yyyy'
+                        }
+                    },
+                    ticks: {
+                        autoSkip: true,
+                        maxRotation: 45,
+                        minRotation: 0,
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        callback: function(value: any, index: number, values: any[]) {
+                            // Check if values are objects with a 'value' property and use that, otherwise assume they are numbers
+                            const startTime = typeof values[0] === 'object' && 'value' in values[0]
+                                ? new Date(values[0].value).getTime()
+                                : new Date(values[0]).getTime();
 
-                if (dataPoints) {
-                  const dataPoint = dataPoints[context.dataIndex];
-                  const numOfRelatedTickers = dataPoint.tickers_json.length;
-                  const numOfTopics = dataPoint.topics_json.length;
+                            const endTime = typeof values[values.length - 1] === 'object' && 'value' in values[values.length - 1]
+                                ? new Date(values[values.length - 1].value).getTime()
+                                : new Date(values[values.length - 1]).getTime();
 
-                  return [
-                    `URL: ${dataPoint.url}`,
-                    `Source: ${dataPoint.source}`,
-                    `Date: ${dataPoint.time_published}`,
-                    `Score: ${parseFloat(dataPoint.sentiment_score).toFixed(2)}`,
-                    `Relevance: ${parseFloat(dataPoint.relevance_score).toFixed(2)}`,
-                    `Title: ${dataPoint.title}`,
-                    `Summary: ${dataPoint.summary}`,
-                    `Number of Related Tickers: ${numOfRelatedTickers}`,
-                    `Ticker Sentiment:\n${dataPoint.tickers_json.map((item: any) =>
-                      `Ticker: ${item.ticker}, Relevance Score: ${parseFloat(item.relevance_score).toFixed(2)}, Score: ${parseFloat(item.ticker_sentiment_score).toFixed(2)}, Label: ${item.ticker_sentiment_label}`).join('\n')}`,
-                    `Number of Associated Topics: ${numOfTopics}`,
-                    `Topic Relevance:\n${dataPoint.topics_json.map((item: any) => `${item.topic}: ${parseFloat(item.relevance_score).toFixed(2)}`).join('\n')}`
-                  ];
+                            const range = endTime - startTime;
+
+                            if (range < 1000 * 60 * 60 * 24) { // less than 1 day
+                                return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            } else {
+                                return new Date(value).toLocaleDateString([], { month: 'short', day: 'numeric' });
+                            }
+                        }
+
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    }
                 }
+            },
+            plugins: {
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: 'x',
+                        modifierKey: 'ctrl',
+                    },
+                    zoom: {
+                        wheel: {
+                            enabled: true,
+                            modifierKey: 'ctrl',
+                        },
+                        pinch: {
+                            enabled: true
+                        },
+                        mode: 'x',
+                        onZoomComplete: ({ chart }) => {
+                            const scale = chart.scales['x'] as any;
+                            const range = scale.max - scale.min;
 
-                return [];
-              }
+                            if (range < 1000 * 60 * 60) { // less than 1 hour
+                                scale.options.time.unit = 'minute';
+                            } else if (range < 1000 * 60 * 60 * 24) { // less than 1 day
+                                scale.options.time.unit = 'hour';
+                            } else if (range < 1000 * 60 * 60 * 24 * 30) { // less than 1 month
+                                scale.options.time.unit = 'day';
+                            } else if (range < 1000 * 60 * 60 * 24 * 365) { // less than 1 year
+                                scale.options.time.unit = 'month';
+                            } else {
+                                scale.options.time.unit = 'year';
+                            }
+
+                            chart.update('none');
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context: ChartJSTooltipItem<'line'>) => {
+                            const datasetLabel = context.dataset.label || '';
+                            const ticker = datasetLabel.split(' ')[0];
+                            const dataPoints = dataPointMapping[ticker];
+
+                            if (dataPoints) {
+                                const dataPoint = dataPoints[context.dataIndex];
+                                const numOfRelatedTickers = dataPoint.tickers_json.length;
+                                const numOfTopics = dataPoint.topics_json.length;
+
+                                return [
+                                    `URL: ${dataPoint.url}`,
+                                    `Source: ${dataPoint.source}`,
+                                    `Date: ${dataPoint.time_published}`,
+                                    `Score: ${parseFloat(dataPoint.sentiment_score).toFixed(2)}`,
+                                    `Relevance: ${parseFloat(dataPoint.relevance_score).toFixed(2)}`,
+                                    `Title: ${dataPoint.title}`,
+                                    `Summary: ${dataPoint.summary}`,
+                                    `Number of Related Tickers: ${numOfRelatedTickers}`,
+                                    `Ticker Sentiment:\n${dataPoint.tickers_json.map((item: any) =>
+                                        `Ticker: ${item.ticker}, Relevance Score: ${parseFloat(item.relevance_score).toFixed(2)}, Score: ${parseFloat(item.ticker_sentiment_score).toFixed(2)}, Label: ${item.ticker_sentiment_label}`).join('\n')}`,
+                                    `Number of Associated Topics: ${numOfTopics}`,
+                                    `Topic Relevance:\n${dataPoint.topics_json.map((item: any) => `${item.topic}: ${parseFloat(item.relevance_score).toFixed(2)}`).join('\n')}`
+                                ];
+                            }
+
+                            return [];
+                        }
+                    }
+                }
             }
-          }
         }
-      }
     });
 
     canvas.onclick = (event) => {
-      const points = this.chart?.getElementsAtEventForMode(event, 'nearest', { intersect: true }, false);
-      if (points?.length) {
-        const firstPoint = points[0];
-        const datasetIndex = firstPoint.datasetIndex;
-        const index = firstPoint.index;
-        const datasetLabel = this.chart?.data.datasets[datasetIndex].label || '';
-        const ticker = datasetLabel.split(' ')[0];
-        const dataPoints = dataPointMapping[ticker];
+        const points = this.chart?.getElementsAtEventForMode(event, 'nearest', { intersect: true }, false);
+        if (points?.length) {
+            const firstPoint = points[0];
+            const datasetIndex = firstPoint.datasetIndex;
+            const index = firstPoint.index;
+            const datasetLabel = this.chart?.data.datasets[datasetIndex].label || '';
+            const ticker = datasetLabel.split(' ')[0];
+            const dataPoints = dataPointMapping[ticker];
 
-        if (dataPoints) {
-          const data = dataPoints[index];
-          this.openDialog(data);
+            if (dataPoints) {
+                const data = dataPoints[index];
+                this.openDialog(data);
+            }
         }
-      }
     };
 
     console.log('Chart updated successfully');
-  }
+}
+
 
   onSubmit(): void {
     console.log('Form submitted:', this.dateForm.value);
