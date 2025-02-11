@@ -369,7 +369,6 @@ class EC2Manager:
         else:
             self.run_commands_via_ssh(self.config.public_dns_name, self.config.key_path, commands, user=self.config.user, **kwargs)
 
-
     def clone_git_repository(self, **kwargs):
         """ Clone the Git repository using the commands provided in the config. """
         if 'ssm' not in kwargs:
