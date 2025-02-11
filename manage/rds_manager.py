@@ -104,7 +104,7 @@ class RDSManager:
         restore_command = f"pg_restore -d {rds_db_url} /tmp/sentiment_temp.dump"
         self.ec2_manager.run_commands_via_ssh_([restore_command])
 
-    def restore_table_to_rds(self, dump_file_path, table_name=None, schema='public', public=False, rds_db_url=None, drop_if_exists=True):
+    def restore_table_to_rds(self, dump_file_path, table_name=None, schema='public', public=False, rds_db_url=None, drop_if_exists=False):
         """Restores a table dump to the RDS database, considering schema and drops the table if it exists."""
         if not rds_db_url:
             rds_db_url = self.get_rds_db_url()
